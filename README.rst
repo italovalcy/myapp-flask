@@ -36,9 +36,9 @@ Run test and coverage report::
     $ coverage run -m pytest
     $ coverage report
 
-To run acceptance tests::
+To run acceptance tests (you need to install a selenium webdriver, such as chrome driver, or use docker image selenium/standalone-chrome + selenium.webdriver.remote)::
 
-    $ echo todo
+    $ python -m pytest tests/acceptance
 
 Docker image
 ------------
