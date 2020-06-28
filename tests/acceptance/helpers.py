@@ -1,14 +1,14 @@
 from selenium import webdriver
 
+SELENIUM_HOST = 'selenium.local'
 BASE_URL = 'http://myapp-flask-1'
 driver = None
 
 def get_driver():
     global driver
-    opts = webdriver.ChromeOptions()
-    opts.add_argument('headless')
-    driver = webdriver.Chrome(chrome_options=opts)
-    return drive
+    cap = webdriver.common.desired_capabilities.DesiredCapabilities.CHROME
+    driver = webdriver.remote.webdriver.WebDriver(SELENIUM_HOST, cap)
+    return driver
 
 def login():
     driver.get(BASE_URL)
