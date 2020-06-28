@@ -5,7 +5,9 @@ driver = None
 
 def get_driver():
     global driver
-    driver = driver or webdriver.PhantomJS()
+    opts = webdriver.ChromeOptions()
+    opts.add_argument('headless')
+    driver = webdriver.Chrome(chrome_options=opts)
     return drive
 
 def login():
