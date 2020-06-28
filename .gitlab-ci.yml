@@ -1,10 +1,9 @@
 # Code highly based on https://youtu.be/hnc3GD_gWEA and https://git.jac.bsb.br/gutocarvalho/ficaemcasaconf
-default:
-  image: python:3.6
-
 variables:
   DOCKER_DRIVER: overlay
   IMAGE_NAME: myapp-flask
+  MY_REPO_HOST: localhost  # https://hub.docker.com/_/registry
+  MY_REPO_PORT: 5000
 
 stages:
   - build
@@ -21,32 +20,23 @@ python-setup:
     - git clone https://github.com/italovalcy/myapp-flask
     - cd myapp-flask
     - pip install -r requirements-dev.txt
-    - echo "TODO: python setup.py install"
+    - echo "TODO - python setup.py install"
     - export FLASK_APP=flaskr
     - export FLASK_ENV=development
     - flask run &
-    - echo "TODO: do something else to setup the app"
+    - echo "TODO - do something else to setup the app"
 
 1-smoke:
   stage: tests
+  image: python:3.6
   tags:
     - shell
-  only:
-    - master
-  variables:
-    GIT_STRATEGY: none
   script:
     - echo "running smoke test"
 
 2-unit:
   stage: tests
   image: python:3.6
-  tags:
-    - shell
-  only:
-    - master
-  variables:
-    GIT_STRATEGY: none
   script:
     - git clone https://github.com/italovalcy/myapp-flask
     - cd myapp-flask
@@ -55,23 +45,13 @@ python-setup:
 
 3-style:
   stage: tests
-  tags:
-    - shell
-  only:
-    - master
-  variables:
-    GIT_STRATEGY: none
+  image: python:3.6
   script:
     - echo "running checkstyle (e.g. pyling)"
 
 4-smell:
   stage: tests
-  tags:
-    - shell
-  only:
-    - master
-  variables:
-    GIT_STRATEGY: none
+  image: python:3.6
   script:
     - echo "running codesmell checks"
 
@@ -80,29 +60,25 @@ docker_build:
   tags:
     - shell
   script:
-    - docker build -f Dockerfile -t $IMAGE_NAME:$CI_PIPELINE_ID .
-    - docker build -f Dockerfile -t $IMAGE_NAME:latest .
+    - git clone https://github.com/italovalcy/myapp-flask
+    - cd myapp-flask
+    - docker build -f Dockerfile -t $IMAGE_NAME:$CI_PIPELINE_ID --no-cache .
+    - docker tag $IMAGE_NAME:$CI_PIPELINE_ID $MY_REPO_HOST:$MY_REPO_PORT/$IMAGE_NAME:latest
 
 docker_check:
   stage: image
   tags:
     - shell
-  only:
-    - master
-  variables:
-    GIT_STRATEGY: none
   script:
     - echo "running clair on image $IMAGE_NAME:$CI_PIPELINE_ID"
-    
+
 docker_clean:
   stage: image
   tags:
     - shell
-  only:
-    - master
   script:
     - echo "Cleanup images, except latest and $CI_PIPELINE_ID"
-    - for i in `docker images|grep $IMAGE_NAME|egrep -v '(latest|$CI_PIPELINE_ID)' | awk '{ print $3 }'`;do docker rmi -f $i;done
+    - for i in `docker images|grep $IMAGE_NAME|egrep -v "(latest|$CI_PIPELINE_ID)" | awk '{ print $3 }'`;do docker rmi -f $i;done
 
 docker_push:
   stage: image
@@ -110,77 +86,54 @@ docker_push:
     - shell
   script:
     - echo "push the image to some repository"
-    - export MY_REPO_HOST=xpto_repo
-    - export MY_REPO_PORT=8443
-    - echo "TODO: docker login -u xpto_user -p xpto_pass https://$MY_REPO_HOST:$MY_REPO_PORT"
-    - echo "TODO: docker push $MY_REPO_HOST:$MY_REPO_PORT/$IMAGE_NAME:$CI_PIPELINE_ID"
+    - echo "TODO - docker login -u xpto_user -p xpto_pass $MY_REPO_HOST:$MY_REPO_PORT"
+    - docker push $MY_REPO_HOST:$MY_REPO_PORT/$IMAGE_NAME:latest
 
 selenium:
   stage: acceptance
-  image: $IMAGE_NAME:latest
-  tags:
-    - shell
-  only:
-    - master
+  image: python:3.6
   variables:
     GIT_STRATEGY: none
-  before_script:
-    - git clone https://github.com/italovalcy/myapp-flask
-    - apt-get update && apt-get install -y chromium-chromedriver
+  only:
+    - master
   script:
-    - python -m pytest tests/acceptance
+    - echo "TODO - running acceptance tests with selenium"
 
 cve_scanner:
   stage: security
-  tags:
-    - shell
-  only:
-    - master
   variables:
     GIT_STRATEGY: none
+  only:
+    - master
   script:
-    - echo "TODO: running a security scanner"
+    - echo "TODO - running a security scanner"
 
 abuse_checker:
   stage: security
-  tags:
-    - shell
-  only:
-    - master
-  variables:
-    GIT_STRATEGY: none
   script:
-    - echo "TODO: running some abuse cases checker"
+    - echo "TODO - running some abuse cases checker"
 
 performance_tester:
   stage: security
-  tags:
-    - shell
-  only:
-    - master
-  variables:
-    GIT_STRATEGY: none
   services:
-    - name: $IMAGE_NAME:latest
+    - name: $MY_REPO_HOST:$MY_REPO_PORT/$IMAGE_NAME:latest
       alias: myapp-flask-1
   image:
     name: loadimpact/k6:latest
     entrypoint: [""]
   before_script:
-    - git clone https://github.com/italovalcy/myapp-flask
+    - cd /home/k6
+    - wget https://raw.githubusercontent.com/italovalcy/myapp-flask/master/tests/performance/performance-test.js
   script:
     - echo "executing k6 againt site with 9000 requests in 30s..."
-    - k6 run ./tests/performance/performance-test.js
+    - k6 run performance-test.js
+    - echo "TODO - use the results to do something else (e.g. analyze)"
 
 deploy_kubernets:
   stage: deploy
   tags:
     - shell
-  only:
-    - master
-  variables:
-    GIT_STRATEGY: none
   before_script:
-    - echo "TODO: prepare config and setup credentials"
+    - echo "TODO - prepare config and setup credentials"
   script:
-    - echo "TODO: kubectl set image -n"
+    - echo "TODO - kubectl set image -n"
