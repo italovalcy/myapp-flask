@@ -7,7 +7,8 @@ driver = None
 def get_driver():
     global driver
     cap = webdriver.common.desired_capabilities.DesiredCapabilities.CHROME
-    driver = webdriver.remote.webdriver.WebDriver(SELENIUM_HOST, cap)
+    url = 'http://'+SELENIUM_HOST+':4444/wd/hub'
+    driver = webdriver.remote.webdriver.WebDriver(url, cap)
     return driver
 
 def login():
