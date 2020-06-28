@@ -1,0 +1,186 @@
+# Code highly based on https://youtu.be/hnc3GD_gWEA and https://git.jac.bsb.br/gutocarvalho/ficaemcasaconf
+default:
+  image: python:3.6
+
+variables:
+  DOCKER_DRIVER: overlay
+  IMAGE_NAME: myapp-flask
+
+stages:
+  - build
+  - tests
+  - image
+  - acceptance
+  - security
+  - deploy
+
+python-setup:
+  stage: build
+  image: python:3.6
+  script:
+    - git clone https://github.com/italovalcy/myapp-flask
+    - cd myapp-flask
+    - pip install -r requirements-dev.txt
+    - echo "TODO: python setup.py install"
+    - export FLASK_APP=flaskr
+    - export FLASK_ENV=development
+    - flask run &
+    - echo "TODO: do something else to setup the app"
+
+1-smoke:
+  stage: tests
+  tags:
+    - shell
+  only:
+    - master
+  variables:
+    GIT_STRATEGY: none
+  script:
+    - echo "running smoke test"
+
+2-unit:
+  stage: tests
+  image: python:3.6
+  tags:
+    - shell
+  only:
+    - master
+  variables:
+    GIT_STRATEGY: none
+  script:
+    - git clone https://github.com/italovalcy/myapp-flask
+    - cd myapp-flask
+    - pip install -r requirements-dev.txt
+    - python -m pytest --cov=flaskr --cov-report term tests/unit/
+
+3-style:
+  stage: tests
+  tags:
+    - shell
+  only:
+    - master
+  variables:
+    GIT_STRATEGY: none
+  script:
+    - echo "running checkstyle (e.g. pyling)"
+
+4-smell:
+  stage: tests
+  tags:
+    - shell
+  only:
+    - master
+  variables:
+    GIT_STRATEGY: none
+  script:
+    - echo "running codesmell checks"
+
+docker_build:
+  stage: image
+  tags:
+    - shell
+  script:
+    - docker build -f Dockerfile -t $IMAGE_NAME:$CI_PIPELINE_ID .
+    - docker build -f Dockerfile -t $IMAGE_NAME:latest .
+
+docker_check:
+  stage: image
+  tags:
+    - shell
+  only:
+    - master
+  variables:
+    GIT_STRATEGY: none
+  script:
+    - echo "running clair on image $IMAGE_NAME:$CI_PIPELINE_ID"
+    
+docker_clean:
+  stage: image
+  tags:
+    - shell
+  only:
+    - master
+  script:
+    - echo "Cleanup images, except latest and $CI_PIPELINE_ID"
+    - for i in `docker images|grep $IMAGE_NAME|egrep -v '(latest|$CI_PIPELINE_ID)' | awk '{ print $3 }'`;do docker rmi -f $i;done
+
+docker_push:
+  stage: image
+  tags:
+    - shell
+  script:
+    - echo "push the image to some repository"
+    - export MY_REPO_HOST=xpto_repo
+    - export MY_REPO_PORT=8443
+    - echo "TODO: docker login -u xpto_user -p xpto_pass https://$MY_REPO_HOST:$MY_REPO_PORT"
+    - echo "TODO: docker push $MY_REPO_HOST:$MY_REPO_PORT/$IMAGE_NAME:$CI_PIPELINE_ID"
+
+selenium:
+  stage: acceptance
+  image: $IMAGE_NAME:latest
+  tags:
+    - shell
+  only:
+    - master
+  variables:
+    GIT_STRATEGY: none
+  before_script:
+    - git clone https://github.com/italovalcy/myapp-flask
+    - apt-get update && apt-get install -y chromium-chromedriver
+  script:
+    - python -m pytest tests/acceptance
+
+cve_scanner:
+  stage: security
+  tags:
+    - shell
+  only:
+    - master
+  variables:
+    GIT_STRATEGY: none
+  script:
+    - echo "TODO: running a security scanner"
+
+abuse_checker:
+  stage: security
+  tags:
+    - shell
+  only:
+    - master
+  variables:
+    GIT_STRATEGY: none
+  script:
+    - echo "TODO: running some abuse cases checker"
+
+performance_tester:
+  stage: security
+  tags:
+    - shell
+  only:
+    - master
+  variables:
+    GIT_STRATEGY: none
+  services:
+    - name: $IMAGE_NAME:latest
+      alias: myapp-flask-1
+  image:
+    name: loadimpact/k6:latest
+    entrypoint: [""]
+  before_script:
+    - git clone https://github.com/italovalcy/myapp-flask
+  script:
+    - echo "executing k6 againt site with 9000 requests in 30s..."
+    - k6 run ./tests/performance/performance-test.js
+
+deploy_kubernets:
+  stage: deploy
+  tags:
+    - shell
+  only:
+    - master
+  variables:
+    GIT_STRATEGY: none
+  before_script:
+    - echo "TODO: prepare config and setup credentials"
+  script:
+    - echo "TODO: kubectl set image -n"
